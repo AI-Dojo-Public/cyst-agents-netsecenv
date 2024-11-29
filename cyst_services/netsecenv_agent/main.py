@@ -1,6 +1,8 @@
 import asyncio
+import jsonpickle
 
 import aiohttp.web_request
+import netaddr
 from aiohttp import web
 from dataclasses import dataclass
 from typing import Tuple, Optional, Dict, Any, Union
@@ -96,8 +98,13 @@ class NetSecEnvAgent(ActiveService):
 
         self._futures: Dict[int, asyncio.Future] = {}
 
+        self._actions = {}
+
     async def run(self) -> None:
         await self._manager.run()
+
+        for action in self._res.action_store.get_prefixed("dojo"):
+            self._actions[action.id] = action
 
         print("NetSecEnv agent is running")
 
@@ -111,7 +118,7 @@ class NetSecEnvAgent(ActiveService):
     async def execute_action(self, action_name: str, params: Dict) -> Tuple[int, Dict]:
         print(f"Executing action: {action_name} with params: {params}")
 
-        action = self._res.action_store.get(action_name)
+        action = self._actions.get(action_name, None)
         if not action:
             return 400, {"message": f"Trying to execute non-existent action: {action_name}"}
 
@@ -128,6 +135,8 @@ class NetSecEnvAgent(ActiveService):
         for k, v in params.items():
             if k == "dst_ip" or k == "dst_service":
                 continue
+            if k == "to_network":
+                v = netaddr.IPNetwork(v)
             action.parameters[k].value = v
 
         request = self._msg.create_request(dst_ip, dst_service, action)
@@ -142,7 +151,9 @@ class NetSecEnvAgent(ActiveService):
         response: Response = f.result()
         del self._futures[request.id]
 
-        return 200, {"status": str(response.status), "content": response.content}
+        result = {"status": str(response.status), "content": str(response.content), "message": str(response)}
+
+        return 200, result
 
 
 def create_netsecenv_agent_service(msg: EnvironmentMessaging, res: EnvironmentResources, id: str, args: Optional[Dict[str, Any]]) -> ActiveService:
