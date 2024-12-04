@@ -151,7 +151,7 @@ class NetSecEnvAgent(ActiveService):
         response: Response = f.result()
         del self._futures[request.id]
 
-        result = {"status": str(response.status), "content": str(response.content), "message": str(response)}
+        result = {"id": request.id, "status": str(response.status), "content": str(response.content)}
 
         return 200, result
 
