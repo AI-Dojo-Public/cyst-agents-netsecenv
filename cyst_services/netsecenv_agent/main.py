@@ -33,6 +33,7 @@ class NetSecEnvAgentManager(metaclass=Singleton):
 
         self._running = False
         self._terminate = False
+        self._port: int = 8282
 
     def _waiter(self, message: Message) -> Tuple[bool, int]:
         if not self._terminate:
@@ -41,6 +42,8 @@ class NetSecEnvAgentManager(metaclass=Singleton):
 
     def register_agent(self, id: str, args: Dict[str, Any] | None, agent: 'NetSecEnvAgent'):
         desc = args['__desc'] if args and '__desc' in args else ""
+        if (port := args.get("agent_env_manager_port")) is not None:
+            self._port = port
         self._agents[id] = AgentRecord(id, agent, desc)
 
     async def list_agents(self, request: aiohttp.web_request.Request):
@@ -76,8 +79,7 @@ class NetSecEnvAgentManager(metaclass=Singleton):
 
             await runner.setup()
 
-            site = web.TCPSite(runner, "localhost", 8282)
-
+            site = web.TCPSite(runner, "localhost", self._port)
             loop = asyncio.get_running_loop()
             t = loop.create_task(site.start())
 
