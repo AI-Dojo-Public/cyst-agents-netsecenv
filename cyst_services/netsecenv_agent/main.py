@@ -5,7 +5,7 @@ import aiohttp.web_request
 import netaddr
 from aiohttp import web
 from dataclasses import dataclass
-from typing import Tuple, Optional, Dict, Any, Union, List
+from typing import Tuple, Optional, Dict, Any, Union, List, Set
 from uuid import uuid4
 
 from cyst.api.logic.action import Action
@@ -103,6 +103,9 @@ class NetSecEnvAgent(ActiveService):
 
         self._sessions = args.get("__sessions", {}) if args else {}
         self._auths = {}
+
+        self._auth_targets: Set[Tuple] = set()
+        self._session_targets: Set[Tuple] = set()
 
     async def run(self) -> None:
         await self._manager.run()
@@ -258,12 +261,27 @@ class NetSecEnvAgent(ActiveService):
         response: Response = f.result()
         del self._futures[request.id]
 
+        # Check if there is a new authorization in the response
+        new_auth_id = ""
         if response.auth:
-            auth_id = "authorization_" + str(Counter().get("netsecenv_authorization"))
-            auth_entry = [auth_id, dst_ip, dst_service, response.auth]
-            self._auths[auth_id] = auth_entry
+            if not (dst_ip, dst_service) in self._auth_targets:
+                auth_id = "authorization_" + str(Counter().get("netsecenv_authorization"))
+                new_auth_id = auth_id
+                auth_entry = [auth_id, dst_ip, dst_service, response.auth]
+                self._auths[auth_id] = auth_entry
+                self._auth_targets.add((dst_ip, dst_service))
 
-        result = {"id": request.id, "status": str(response.status), "content": str(response.content), "message": str(response)}
+        # Check if there is a new session in the response
+        # We are ignoring multiple sessions that are opened to the same destination (even though they will be displayed
+        # in the session list.
+        new_session_id = ""
+        if response.session:
+            if not response.session.end in self._session_targets:
+                new_session_id = response.session.id
+                self._session_targets.add(response.session.end)
+
+        result = {"id": request.id, "status": str(response.status), "new_auth_id": new_auth_id,
+                  "new_session_id": new_session_id, "content": str(response.content), "message": str(response)}
 
         return 200, result
 
