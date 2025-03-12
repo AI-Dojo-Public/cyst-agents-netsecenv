@@ -182,10 +182,13 @@ class NetSecEnvAgent(ActiveService):
                 return 400, {"message": "Missing parameter 'dst_ip'."}
             dst_service = params.get("dst_service", "")
             if not dst_service:
-                if session and str(session.end[0]) == dst_ip:
-                    dst_service = session.end[1]
+                if session:
+                    if str(session.end[0]) == dst_ip:
+                        dst_service = session.end[1]
+                    else:
+                        return 400, {"message": f"Missing parameter 'dst_service'. The provided session does not end in the expected node '{dst_ip}' but in '{str(session.end[0])}', so its service cannot be used."}
                 else:
-                    return 400, {"message": f"Missing parameter 'dst_service'. The provided session does not end in the expected node '{dst_ip}' but in '{session.end[0]}', so its service cannot be used."}
+                    return 400, {"message": f"Missing parameter 'dst_service'."}
             directory = params.get("directory", "")
             if not directory:
                 return 400, {"message": "Missing parameter 'directory'."}
