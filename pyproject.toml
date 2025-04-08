@@ -1,0 +1,38 @@
+[tool.poetry]
+name = "cyst-agents-netsecenv"
+version = "0.6.0"
+description = ""
+authors = ["Martin Drasar <drasar@ics.muni.cz>"]
+readme = "README.md"
+
+packages = [
+    { include = "cyst_services", from = "." }
+]
+
+[tool.poetry.dependencies]
+    python = ">=3.11, <4.0.0"
+    # Use CYST components' local paths and not remote git repositories if you also want to hack on them. Beware that you
+    # will have to make this change in all other dependent projects that will be using the same dependency (this
+    # typically happens with cyst-core).
+    #
+    # ALternativelly, you can use a `poetry add -e <cyst_component_path>`. This will install it all correctly, but
+    # has a high chance of failing to do `poetry update`. But unless you need to actually do `poetry update` this should
+    # work.
+    cyst-core = {git = "https://gitlab.com/ai-dojo-public/cyst-core.git", branch = "master"}
+    # cyst-core = { path = "../cyst-core", develop = true }
+    aiohttp = "^3.11.0"
+
+[build-system]
+    requires = ["poetry-core"]
+    build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.plugins]
+
+[tool.poetry.plugins."cyst.models"]
+
+[tool.poetry.plugins."cyst.services"]
+    netsecenv_agent="cyst_services.netsecenv_agent.main:service_description"
+
+[tool.poetry.plugins."cyst.metadata_providers"]
+
+[tool.poetry.plugins."cyst.platforms"]
